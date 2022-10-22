@@ -8,3 +8,5 @@ temp
 code
 experiments
 checkpoints
+data/datasets
+data/wandb
