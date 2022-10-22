@@ -1,6 +1,6 @@
 wrapper:
     recipe: wrapper|default
-    max_epochs: 1
+    max_epochs: 10
 arch:
     model:
         file: depth/SelfSupervisedModel
@@ -25,7 +25,17 @@ optimizers:
         recipe: optimizers|adam_20_05
 datasets:
     train:
+        path: ['data/datasets/KITTI_tiny']
         recipe: datasets/kitti_tiny|train_selfsup_mr
     validation:
+        path: ['data/datasets/KITTI_tiny']
         recipe: datasets/kitti_tiny|validation_mr
+wandb:
+    folder: data/wandb     # Where the wandb run is stored
+    entity: js0           # Wandb entity
+    project: manydepth_seg         # Wandb project
+#    num_validation_logs: X        # Number of visualization logs
+#    tags: [tag1,tag2,...]         # Wandb tags
+#    notes: note                   # Wandb notes
+
 

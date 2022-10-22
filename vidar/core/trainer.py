@@ -14,9 +14,11 @@ from vidar.utils.distributed import on_rank_0, rank, world_size, print0, dist_mo
 from vidar.utils.logging import pcolor, AvgMeter
 from vidar.utils.setup import setup_dataloader, reduce
 from vidar.utils.types import is_dict, is_seq, is_numpy, is_tensor, is_list
+import os
+from typing import Optional
 
 
-def sample_to_cuda(sample, proc_rank, dtype=None):
+def sample_to_cuda(sample, proc_rank, dtype: Optional[torch.dtype] = None):
     """
     Copy sample to GPU
 
@@ -35,7 +37,7 @@ def sample_to_cuda(sample, proc_rank, dtype=None):
         Dictionary with sample on the GPU
     """
     # Do nothing if cuda is not available
-    if not torch.cuda.is_available():
+    if os.environ['DIST_MODE'] == 'cpu':
         return sample
     # If it's a sequence (list or tuple)
     if is_seq(sample):
@@ -89,6 +91,7 @@ class Trainer:
 
         self.current_epoch = 0
         self.training_bar_metrics = cfg_has(cfg.wrapper, 'training_bar_metrics', [])
+        self.fp16 = cfg_has(cfg.wrapper, 'fp16', False)
 
     @property
     def progress(self):
@@ -324,6 +327,8 @@ class Trainer:
         return in_optimizers, out_optimizers
 
     def learn(self, wrapper):
+        if self.fp16:
+            wrapper.half()
         """Entry-point class for training a model"""
         # Get optimizers and schedulers
         optimizers, schedulers = wrapper.configure_optimizers_and_schedulers()
@@ -397,8 +402,10 @@ class Trainer:
         for i, batch in progress_bar:
 
             # Send samples to GPU and take a training step
-            batch = sample_to_cuda(batch, self.proc_rank)
+            batch = sample_to_cuda(batch, self.proc_rank, dtype=torch.half if self.fp16 else torch.float)
             output = wrapper.training_step(batch, epoch=self.current_epoch)
+            if self.logger:
+                self.logger.log_data('train', batch, output, dataloader.dataset, '')
 
             # Step optimizer
             if wrapper.update_schedulers == 'step':
@@ -444,7 +451,7 @@ class Trainer:
             batch_outputs = []
             for batch_idx, batch in progress_bar:
                 # Send batch to GPU and take a validation step
-                batch = sample_to_cuda(batch, self.proc_rank)
+                batch = sample_to_cuda(batch, self.proc_rank, dtype=torch.half if self.fp16 else torch.float)
                 output, results = wrapper.validation_step(batch, epoch=self.current_epoch)
                 if 'batch' in output:
                     batch = output['batch']

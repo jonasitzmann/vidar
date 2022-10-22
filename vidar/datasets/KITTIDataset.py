@@ -27,7 +27,7 @@ CALIB_FILE = {
 }
 
 
-PNG_DEPTH_DATASETS = ['groundtruth']
+PNG_DEPTH_DATASETS = ['groundtruth', 'depth', 'depth_improved']
 OXTS_POSE_DATA = 'oxts'
 
 
@@ -95,7 +95,7 @@ class KITTIDataset(BaseDataset):
 
         with open(os.path.join(self.path, split), "r") as f:
             data = f.readlines()
-
+        data = [l.replace('\\', '/') for l in data]
         self.paths = []
         # Get file list from data
         for i, fname in enumerate(data):
@@ -217,8 +217,12 @@ class KITTIDataset(BaseDataset):
         """Get the corresponding depth file from an image file"""
         for cam in ['left', 'right']:
             if IMAGE_FOLDER[cam] in image_file:
-                depth_file = image_file.replace(
-                    IMAGE_FOLDER[cam] + '/data', 'proj_depth/{}/{}'.format(depth_type, IMAGE_FOLDER[cam]))
+                if image_file.startswith('/beegfs'):
+                    depth_dir = dict(depth='Depth', depth_improved='Depth_improved').get(depth_type)
+                    depth_file = image_file.replace('Raw_data', depth_dir)
+                else:
+                    depth_file = image_file.replace(
+                        IMAGE_FOLDER[cam] + '/data', 'proj_depth/{}/{}'.format(depth_type, IMAGE_FOLDER[cam]))
                 if depth_type not in PNG_DEPTH_DATASETS:
                     depth_file = depth_file.replace('png', 'npz')
                 return depth_file

@@ -61,6 +61,7 @@ class Camera(nn.Module, ABC):
             self._Twc = invert_pose(Tcw) if Tcw is not None else Twc
         if is_tensor(self._Twc):
             self._Twc = Pose(self._Twc)
+        self._Twc.T = self._Twc.T.to(dtype=self._K.dtype)
 
         # Resolution
 
@@ -381,14 +382,17 @@ class Camera(nn.Module, ABC):
             Output 3D points [B,3,D,H,W]
         """
         c, d, h, w = volume.shape
-        grid = pixel_grid((h, w), with_ones=True, device=volume.device).view(3, -1).repeat(1, d)
-        points = torch.stack([
-            (volume.view(c, -1) * torch.matmul(invK[:3, :3].unsqueeze(0), grid)).view(3, d * h * w)
-            for invK in self.invK], 0)
+        grid = pixel_grid((h, w), b=c, with_ones=True, device=volume.device).view(c, 3, -1).repeat(1, 1, d).to(dtype=volume.dtype)
+        # points = torch.stack([
+        #     (volume.view(c, -1) * torch.matmul(invK[:3, :3].unsqueeze(0), grid)).view(-1, d * h * w)
+        #     for invK in self.invK], 0)
+        points = (volume.view(c, 1, -1) * (self.invK[:, :3, :3] @ grid)).view(-1, d*h*w)
         if to_world and self.Tcw is not None:
             points = self.Tcw * points
         if flatten:
-            return points.view(-1, 3, d, h * w).permute(0, 2, 1, 3)
+            points_ = points.view(-1, 3, d, h*w).permute(0, 2, 1, 3)
+            return points_
+            # return points.view(-1, 3, d, h * w).permute(0, 2, 1, 3)
         else:
             return points.view(-1, 3, d, h, w)
 

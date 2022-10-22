@@ -79,8 +79,10 @@ class TransformerNet(nn.Module):
         feat_all = self.backbone(target, context)
         feat = [feat_all[0]] + feat_all[2:]
 
-        feat1 = [f[[0]] for f in feat]
-        feat2 = [f[[1]] for f in feat]
+        # feat1 = [f[[0]] for f in feat]
+        # feat2 = [f[[1]] for f in feat]
+        feat1 = [f[:bs] for f in feat]
+        feat2 = [f[-bs:] for f in feat]
 
         feat1 = self.tokenizer(feat1)
         feat2 = self.tokenizer(feat2)

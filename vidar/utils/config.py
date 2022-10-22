@@ -228,7 +228,7 @@ def read_config(path, **kwargs):
         Output configuration
     """
     """Read configuration from file"""
-    with open(path) as cfg:
+t    with open(path) as cfg:
         config = yaml.load(cfg, Loader=yaml.FullLoader)
     config = recursive_recipe(config)
     cfg = to_namespace(config)
@@ -277,6 +277,7 @@ def get_folder_name(path, mode, root='vidar/arch'):
     """Get folder and name from configuration path"""
     folder, name = os.path.dirname(path), os.path.basename(path)
     folder = os.path.join(root, mode, folder)
+    folder = folder.replace('\\', '/')
     if folder.endswith('/'):
         folder = folder[:-1]
     return folder, name

@@ -3,6 +3,7 @@
 import copy
 from functools import partial
 
+import einops
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -68,14 +69,13 @@ class Transformer(nn.Module):
         """Perform self- and cross-attention between two feature maps"""
         device = feat1.device
         cam = cam.to(device)
-        h, w = cam.hw
-
+        b, (h, w) = cam.batch_size, cam.hw
         depth_bins = compute_depth_bins(min_depth, max_depth, num_bins, 'sid').to(device)
-
-        ones = torch.ones((1, h, w), dtype=feat1.dtype, device=device)
+        ones = torch.ones((b, h, w), dtype=feat1.dtype, device=device)
         warped_depth = torch.stack([depth * ones for depth in depth_bins], 1)
-        coords = cam.coords_from_cost_volume(warped_depth)[0]
-
+        coords = cam.coords_from_cost_volume(warped_depth)
+        # coords = einops.rearrange('b d h w 2 -> (b d) h w 2')
+        coords = coords.reshape(-1, *coords.shape[2:])
         coords[coords < -1] = -2
         coords[coords > +1] = +2
 
@@ -85,9 +85,9 @@ class Transformer(nn.Module):
         repeated_ones = ones.repeat([num_bins, 1, 1, 1])
         warped_mask = self.grid_sample_nearest(repeated_ones, coords.type(repeated_ones.dtype))
 
-        with torch.no_grad():
-            ssim_volume = SSIMLoss()(feat1, warped)['loss'].mean(1).unsqueeze(0)
-            lowest_cost = 1. / compute_depth_bin(min_depth, max_depth, num_bins, torch.min(ssim_volume, 1)[1])
+        # with torch.no_grad():
+        #     ssim_volume = SSIMLoss()(feat1, warped)['loss'].mean(1).unsqueeze(0) # todo: create ground truth loss in this manner!
+        #     lowest_cost = 1. / compute_depth_bin(min_depth, max_depth, num_bins, torch.min(ssim_volume, 1)[1])
 
         feat1 = prepareB(feat1)
         feat2 = prepareB(warped)
@@ -101,8 +101,8 @@ class Transformer(nn.Module):
         return {
             'attn_weight': attn_weight,
             'warped_mask': warped_mask,
-            'ssim_lowest_cost': lowest_cost,
-            'ssim_cost_volume': ssim_volume,
+            # 'ssim_lowest_cost': lowest_cost,
+            # 'ssim_cost_volume': ssim_volume,
         }
 
     def forward(self, feat1, feat2, cam=None, min_depth=None, max_depth=None, num_bins=None):

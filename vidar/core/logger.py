@@ -144,6 +144,8 @@ class WandbLogger:
         ontology : Dict
             Dictionary with ontology information
         """
+        if 'predictions' not in output:
+            return
         for data, suffix in zip([batch, output['predictions']], ['-gt', '-pred']):
             for key in data.keys():
                 if key.startswith('rgb'):

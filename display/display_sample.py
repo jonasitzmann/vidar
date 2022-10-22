@@ -2,6 +2,8 @@
 
 import json
 
+import sys
+sys.path.append('../camviz')
 import numpy as np
 from camviz import BBox3D
 from camviz import Camera as CameraCV

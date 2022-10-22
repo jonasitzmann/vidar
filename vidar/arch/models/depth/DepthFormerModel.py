@@ -61,9 +61,22 @@ class DepthFormerModel(BaseModel, ABC):
         """Process batch to recover stereo / monocular information"""
         batch = {key: val for key, val in batch.items()}
         new_intrinsics = {0: batch['intrinsics'][0]}
-        for key in batch['pose'].keys():
-            if not is_str(key) and key != 0:
-                new_intrinsics[key] = batch['intrinsics'][0]
+
+        # ---
+        # don't require pose as suggested by in https://github.com/TRI-ML/vidar/issues/15
+        #
+        # for key in batch['pose'].keys():
+        #     if not is_str(key) and key != 0:
+        #         new_intrinsics[key] = batch['intrinsics'][0]
+        if 'pose' in batch:
+            for key in batch['pose'].keys():
+                if not is_str(key) and key != 0:
+                    new_intrinsics[key] = batch['intrinsics'][0]
+        else:
+            new_intrinsics[-1] = batch['intrinsics'][0]
+            new_intrinsics[1] = batch['intrinsics'][0]
+        # ----
+
         batch['intrinsics'] = new_intrinsics
         suffixes = ['', 'r', 's', 't', 'u', 'v']
         if batch['rgb'][0].dim() == 5:
@@ -451,8 +464,9 @@ class DepthFormerModel(BaseModel, ABC):
 
         depth_pred = [predictions['depth_regr'][0][0]]
         depth_gt = depth_mono[0].detach()
-        supervision_output = self.losses['supervision'](depth_pred, depth_gt)
-        loss.append(supervision_output['loss'])
+        if 'supervision' in self.losses:
+            supervision_output = self.losses['supervision'](depth_pred, depth_gt)
+            loss.append(supervision_output['loss'])
 
         loss = sum(loss)
 
