@@ -6,3 +6,5 @@ __pycache__
 wandb
 temp
 code
+experiments
+checkpoints

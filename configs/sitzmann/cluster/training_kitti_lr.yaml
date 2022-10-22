@@ -1,0 +1,66 @@
+wrapper:
+    recipe: wrapper|default
+    max_epochs: 50
+    validate_first: False
+arch:
+    model:
+        file: depth/DepthFormerModel
+        warp_context: [ -1,1 ]
+        match_context: [ -1 ]
+        motion_masking: True
+        matching_augmentation: False
+        freeze_teacher_and_pose: 45
+#        checkpoint: checkpoints/DepthFormer_MR_selfsup_KITTI.ckpt
+    networks:
+        transformer:
+            recipe: networks/transformer|depthformer
+        mono_depth:
+            recipe: networks/mono_depth_res_net|default
+            depth_range: [0.1,100.0]
+        multi_depth:
+            recipe: networks/multi_depth_res_net|depthformer
+        pose:
+            recipe: networks/pose_net|default
+    losses:
+        reprojection:
+            recipe: losses/reprojection|default
+        smoothness:
+            recipe: losses/smoothness|default
+evaluation:
+    depth:
+        recipe: evaluation/depth|kitti_resize
+optimizers:
+    multi_depth:
+        recipe: optimizers|adam_20_05
+    mono_depth:
+        recipe: optimizers|adam_20_05
+    pose:
+        recipe: optimizers|adam_20_05
+    transformer:
+        recipe: optimizers|adam_20_05
+datasets:
+    train:
+        recipe: datasets/kitti|train_selfsup_mr
+        context: [ -1,1 ]
+        augmentation:
+            resize: [128, 416]
+        dataloader:
+            batch_size: 1
+    validation:
+        recipe: datasets/kitti|validation_mr
+        labels: [depth]
+        context: [-1,1]
+        augmentation:
+            resize: [128, 416]
+wandb:
+    folder: data/wandb     # Where the wandb run is stored
+    entity: js0           # Wandb entity
+    project: depthformer         # Wandb project
+    num_train_logs: 20
+    num_validation_logs: 10
+    name: training_lr
+#    num_validation_logs: X        # Number of visualization logs
+#    tags: [tag1,tag2,...]         # Wandb tags
+#    notes: note                   # Wandb notes
+
+

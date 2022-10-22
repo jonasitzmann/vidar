@@ -1,0 +1,35 @@
+use_cpu: true
+wrapper:
+  recipe: wrapper|default
+arch:
+  model:
+    file: depth/DepthFormerModel
+    checkpoint: checkpoints/DepthFormer_MR_selfsup_KITTI.ckpt
+    warp_context: [-1,1]
+    match_context: [-1]
+    motion_masking: True
+    matching_augmentation: False
+    freeze_teacher_and_pose: 40
+  networks:
+    transformer:
+      recipe: networks/transformer|depthformer
+    mono_depth:
+      recipe: networks/mono_depth_res_net|default
+      depth_range: [0.1,100.0]
+    multi_depth:
+      recipe: networks/multi_depth_res_net|depthformer
+    pose:
+      recipe: networks/pose_net|default
+evaluation:
+  depth:
+    recipe: evaluation/depth|kitti_resize
+datasets:
+  validation:
+    recipe: datasets/kitti_tiny|validation_mr
+    path: ['data/datasets/KITTI_tiny']
+    labels: [depth,pose]
+    context: [-1,1]
+    dataloader:
+      num_workers: 0
+save:
+  recipe: save|depth_splitname
