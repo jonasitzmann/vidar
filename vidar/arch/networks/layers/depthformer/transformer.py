@@ -3,7 +3,6 @@
 import copy
 from functools import partial
 
-import einops
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -11,6 +10,7 @@ from torch import nn
 from vidar.arch.losses.SSIMLoss import SSIMLoss
 from vidar.utils.tensor import grid_sample
 from vidar.utils.volume import compute_depth_bins, compute_depth_bin
+from einops import rearrange
 
 
 def get_clones(module, N):
@@ -74,7 +74,6 @@ class Transformer(nn.Module):
         ones = torch.ones((b, h, w), dtype=feat1.dtype, device=device)
         warped_depth = torch.stack([depth * ones for depth in depth_bins], 1)
         coords = cam.coords_from_cost_volume(warped_depth)
-        # coords = einops.rearrange('b d h w 2 -> (b d) h w 2')
         coords = coords.reshape(-1, *coords.shape[2:])
         coords[coords < -1] = -2
         coords[coords > +1] = +2
@@ -83,14 +82,17 @@ class Transformer(nn.Module):
         warped = self.grid_sample(repeated_feat2, coords.type(repeated_feat2.dtype))
 
         repeated_ones = ones.repeat([num_bins, 1, 1, 1])
+        repeated_ones = torch.ones((num_bins*b, 1, h, w), dtype=feat1.dtype, device=device)
         warped_mask = self.grid_sample_nearest(repeated_ones, coords.type(repeated_ones.dtype))
 
-        # with torch.no_grad():
-        #     ssim_volume = SSIMLoss()(feat1, warped)['loss'].mean(1).unsqueeze(0) # todo: create ground truth loss in this manner!
-        #     lowest_cost = 1. / compute_depth_bin(min_depth, max_depth, num_bins, torch.min(ssim_volume, 1)[1])
+        with torch.no_grad():
+            ssim_volume = SSIMLoss()(feat1, warped)['loss'].mean(1).unsqueeze(0) # todo: create ground truth loss in this manner!
+            lowest_cost = 1. / compute_depth_bin(min_depth, max_depth, num_bins, torch.min(ssim_volume, 1)[1])
 
         feat1 = prepareB(feat1)
         feat2 = prepareB(warped)
+        feat1 = rearrange(feat1, '(x b) n c -> x (b n) c', x=1)
+        feat2 = rearrange(feat2, '(b f) n c -> f (b n) c', b=b)
 
         attn_weight = None
         for idx, (self_attn, cross_attn) in \
@@ -101,8 +103,8 @@ class Transformer(nn.Module):
         return {
             'attn_weight': attn_weight,
             'warped_mask': warped_mask,
-            # 'ssim_lowest_cost': lowest_cost,
-            # 'ssim_cost_volume': ssim_volume,
+            'ssim_lowest_cost': lowest_cost,
+            'ssim_cost_volume': ssim_volume,
         }
 
     def forward(self, feat1, feat2, cam=None, min_depth=None, max_depth=None, num_bins=None):

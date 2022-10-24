@@ -31,5 +31,6 @@ datasets:
     context: [-1,1]
     dataloader:
       num_workers: 0
+      batch_size: 2
 save:
   recipe: save|depth_splitname

@@ -80,6 +80,7 @@ class Trainer:
         self.validate_first = cfg_has(cfg.wrapper, 'validate_first', False)
         self.find_unused_parameters = cfg_has(cfg.wrapper, 'find_unused_parameters', False)
         self.grad_scaler = cfg_has(cfg.wrapper, 'grad_scaler', False) and torch.cuda.is_available()
+        self.train_logs_per_epoch = cfg_has(cfg.wrapper, 'train_logs_per_epoch', 50)
 
         self.saver = self.logger = self.checkpoint = None
         self.prep_logger_and_checkpoint(cfg)
@@ -391,6 +392,7 @@ class Trainer:
                 aux_dataloader.sampler.set_epoch(self.current_epoch)
 
         # Prepare progress bar
+        len_dl = len(dataloader)
         progress_bar = self.train_progress_bar(
             dataloader, aux_dataloader=aux_dataloader, ncols=120)
 
@@ -432,6 +434,13 @@ class Trainer:
 
             self.update_averages(output)
             self.update_train_progress_bar(progress_bar)
+            if self.logger:
+                if self.train_logs_per_epoch > 0:
+                    interval = (len_dl // world_size() // self.train_logs_per_epoch) * world_size()
+                    if interval == 0 or (i % interval == 0 and i < interval * self.train_logs_per_epoch):
+                        d = {'train_' + k: v.get() for k, v in self.avg_losses.items()}
+                        d['epoch'] = self.current_epoch
+                        self.logger.experiment.log(d)
 
         # Return outputs for epoch end
         return wrapper.training_epoch_end()
@@ -459,7 +468,8 @@ class Trainer:
                 if self.logger:
                     self.logger.log_data('val', batch, output, dataset, prefix)
                 if self.saver:
-                    self.saver.save_data(batch, output, prefix)
+                    if not dataloader.batch_size > 1:
+                        self.saver.save_data(batch, output, prefix)
             # Append dataset outputs to list of all outputs
             dataset_outputs.append(batch_outputs)
         # Get results from validation epoch end

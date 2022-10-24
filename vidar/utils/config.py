@@ -228,7 +228,7 @@ def read_config(path, **kwargs):
         Output configuration
     """
     """Read configuration from file"""
-t    with open(path) as cfg:
+    with open(path) as cfg:
         config = yaml.load(cfg, Loader=yaml.FullLoader)
     config = recursive_recipe(config)
     cfg = to_namespace(config)

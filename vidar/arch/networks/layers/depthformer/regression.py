@@ -42,7 +42,7 @@ class RegressionHead(nn.Module):
     def upsample(self, x, depth_pred, scale=1.0):
         _, _, h, w = x.size()
         depth_pred_attn = depth_pred * scale
-        depth_pred = F.interpolate(depth_pred_attn[None,], size=(h, w), mode='nearest')
+        depth_pred = F.interpolate(depth_pred_attn[:, None,], size=(h, w), mode='nearest')
         depth_pred_final = self.cal(depth_pred, x)
         return depth_pred_final.squeeze(1), depth_pred_attn.squeeze(1)
 

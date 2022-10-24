@@ -30,6 +30,7 @@ class WandbLogger:
 
         self.num_logs = {
             'train': cfg_has(cfg, 'num_train_logs', 0),
+            'train_metrics': cfg_has(cfg, 'num_train_metrics_locs', 0),
             'val': cfg_has(cfg, 'num_validation_logs', 0),
             'test': cfg_has(cfg, 'num_test_logs', 0),
         }

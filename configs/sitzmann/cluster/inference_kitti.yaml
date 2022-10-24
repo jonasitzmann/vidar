@@ -27,7 +27,8 @@ datasets:
         recipe: datasets/kitti|test_mr
         labels: [depth]
         context: [-1,1]
-        depth_type: [depth, depth_improved]
+#        depth_type: [depth, depth_improved]
+        depth_type: [depth_improved]
 save:
     recipe: save|depth_splitname
 wandb:

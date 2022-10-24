@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --time=20:00:0
+#SBATCH --time=20:0
 #SBATCH --gres=gpu:1
 #SBATCH --mem=10G
-#SBATCH --partition=gpu
+#SBATCH --partition=debug
 #SBATCH --out=log/%j.out
 
 echo checkpoint path: $1
