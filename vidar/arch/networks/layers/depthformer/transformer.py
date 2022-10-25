@@ -85,9 +85,9 @@ class Transformer(nn.Module):
         repeated_ones = torch.ones((num_bins*b, 1, h, w), dtype=feat1.dtype, device=device)
         warped_mask = self.grid_sample_nearest(repeated_ones, coords.type(repeated_ones.dtype))
 
-        with torch.no_grad():
-            ssim_volume = SSIMLoss()(feat1, warped)['loss'].mean(1).unsqueeze(0) # todo: create ground truth loss in this manner!
-            lowest_cost = 1. / compute_depth_bin(min_depth, max_depth, num_bins, torch.min(ssim_volume, 1)[1])
+        # with torch.no_grad():
+        #     ssim_volume = SSIMLoss()(feat1, warped)['loss'].mean(1).unsqueeze(0) # todo: create ground truth loss in this manner!
+        #     lowest_cost = 1. / compute_depth_bin(min_depth, max_depth, num_bins, torch.min(ssim_volume, 1)[1])
 
         feat1 = prepareB(feat1)
         feat2 = prepareB(warped)
@@ -103,8 +103,8 @@ class Transformer(nn.Module):
         return {
             'attn_weight': attn_weight,
             'warped_mask': warped_mask,
-            'ssim_lowest_cost': lowest_cost,
-            'ssim_cost_volume': ssim_volume,
+            # 'ssim_lowest_cost': lowest_cost,
+            # 'ssim_cost_volume': ssim_volume,
         }
 
     def forward(self, feat1, feat2, cam=None, min_depth=None, max_depth=None, num_bins=None):
