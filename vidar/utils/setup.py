@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import numpy as np
 import torch
-from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.data import ConcatDataset, DataLoader, Subset
 
 from vidar.datasets.utils.transforms import get_transforms
 from vidar.metrics.depth import DepthEvaluation
@@ -118,6 +118,7 @@ def setup_dataset(cfg, root='vidar/datasets', verbose=False):
 
         name = get_from_cfg_list(cfg, 'name', i)
         repeat = get_from_cfg_list(cfg, 'repeat', i)
+        max_size = get_from_cfg_list(cfg, 'max_size', i)
         cameras = get_from_cfg_list(cfg, 'cameras', i)
 
         context = cfg.context
@@ -125,6 +126,8 @@ def setup_dataset(cfg, root='vidar/datasets', verbose=False):
 
         dataset = load_class(name + 'Dataset', root)(**args)
 
+        if cfg_has(cfg, 'max_size'):
+            dataset = Subset(dataset, list(range(max_size)))
         if cfg_has(cfg, 'repeat') and repeat > 1:
             dataset = ConcatDataset([dataset for _ in range(repeat)])
 
